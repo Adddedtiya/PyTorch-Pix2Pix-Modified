@@ -48,7 +48,7 @@ class MaskingDataset(BaseDataset):
             A.PadIfNeeded(img_final_size, img_final_size),
             A.HorizontalFlip(),
             A.VerticalFlip(), 
-            A.Rotate((-15, 15), p = 1.0),
+            A.Rotate((-15, 15), p = 1.0, border_mode = cv.BORDER_REFLECT_101),
         ]) if is_training else A.Compose([
             A.LongestMaxSize(img_load_size),
             A.PadIfNeeded(img_final_size, img_final_size),
@@ -88,7 +88,7 @@ class MaskingDataset(BaseDataset):
         augmented_img = self.transform_image(image = original_image)['image']
         augmented_img = np.clip(augmented_img, 0, 1)
 
-        random_array  = np.random.rand(original_image.shape)
+        random_array  = np.random.rand(*augmented_img.shape)
         binary_mask   = self.__grab_random_binary_mask()
 
         masked_image   = np.where(binary_mask, random_array, augmented_img) # Masked area are filled with random
@@ -100,6 +100,9 @@ class MaskingDataset(BaseDataset):
         
         target_tensor = torch.from_numpy(augmented_img) # (W, H)
         target_tensor = torch.unsqueeze(target_tensor, dim = 0) # (1, W, H)
+
+        input_tensor  = input_tensor.to(torch.float32)
+        target_tensor = target_tensor.to(torch.float32)
 
         combined_data = {
             'A': input_tensor,   # Source
