@@ -1,0 +1,1 @@
+python test.py --dataset_mode masking --dataroot "Z:\\PelvisRongensDataset\\dataset_split" --mask_root "Z:\\PelvisRongensDataset\\base_masks" --name mdf_r9_px256_t521 --model pix2pix --direction AtoB --load_size 256 --crop_size 256 --input_nc 2 --output_nc 1 --netG resnet_9blocks --epoch 637
