@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# PLEASE ENSURE LF LINE ENDING
+
 # project information
 project_dir="/win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified"
 simg_path="/win/scallop/user/aditya/SingularityImage/compiled_images/aditya.scallop.naist_baseline-torch_3.3-2025-04-25-b29cf3fff8d7.sif"
