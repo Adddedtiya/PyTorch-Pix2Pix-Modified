@@ -2,7 +2,7 @@
 
 # project information
 project_dir="/win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified"
-simg_path="/win/scallop/user/aditya/SingularityImage/compiled_images/aditya.scallop.naist_baseline-torch_3.0-2025-03-20-c2240002703f.sif"
+simg_path="/win/scallop/user/aditya/SingularityImage/compiled_images/aditya.scallop.naist_baseline-torch_3.3-2025-04-25-b29cf3fff8d7.sif"
 data_root="/win/scallop/user/aditya/PelvisRongensDataset"
 num_core=8
 num_gpu=1
@@ -19,4 +19,4 @@ sbatch \
     -D ${project_dir} \
     -w ${node}  \
     -o "${slurm_out}/%j_${node}.out" \
-    --wrap="singularity exec --nv -B ${project_dir},${data_root} ${simg_path} /bin/bash /win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified/scripts/train_pix2pix_mask.sh"  
+    --wrap="singularity exec --nv -B ${project_dir},${data_root} ${simg_path} /bin/bash /win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified/scripts/train_pix7mask_mask.sh"  

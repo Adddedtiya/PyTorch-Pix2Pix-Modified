@@ -58,7 +58,6 @@ def create_dataset(opt):
     dataset = data_loader.load_data()
     return dataset
 
-
 class CustomDatasetDataLoader():
     """Wrapper class of Dataset class that performs multi-threaded data loading"""
 
@@ -74,9 +73,11 @@ class CustomDatasetDataLoader():
         print("dataset [%s] was created" % type(self.dataset).__name__)
         self.dataloader = torch.utils.data.DataLoader(
             self.dataset,
-            batch_size=opt.batch_size,
-            shuffle=not opt.serial_batches,
-            num_workers=int(opt.num_threads))
+            batch_size        = int(opt.batch_size),
+            shuffle           = not opt.serial_batches,
+            num_workers       = int(opt.num_threads),
+            pin_memory        = True
+        )
 
     def load_data(self):
         return self

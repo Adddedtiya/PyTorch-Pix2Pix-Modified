@@ -100,13 +100,23 @@ class MaskingDataset(BaseDataset):
         
         target_tensor = torch.from_numpy(augmented_img) # (W, H)
         target_tensor = torch.unsqueeze(target_tensor, dim = 0) # (1, W, H)
-
+        
         input_tensor  = input_tensor.to(torch.float32)
         target_tensor = target_tensor.to(torch.float32)
+
+        mask_tensor = torch.from_numpy(binary_mask)
+        mask_tensor = torch.unsqueeze(mask_tensor, dim = 0) # (1, W, H)
+        mask_tensor = mask_tensor.to(torch.float32)
+        
+        # print("INPUT  :", input_tensor.shape)
+        # print("TARGET :", target_tensor.shape)
+        # INPUT  : torch.Size([2, 256, 256])
+        # TARGET : torch.Size([1, 256, 256])
 
         combined_data = {
             'A': input_tensor,   # Source
             'B': target_tensor,  # Target
+            'M': mask_tensor,    # Mask Information
             'A_paths': image_file_path, 
             'B_paths': image_file_path
         }
