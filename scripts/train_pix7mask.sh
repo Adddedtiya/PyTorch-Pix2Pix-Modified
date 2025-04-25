@@ -2,9 +2,9 @@ set -ex
 /usr/bin/python3.11 /win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified/modified_train.py \
     --dataset_mode curtain \
     --dataroot "/win/scallop/user/aditya/PelvisRongensDataset/dataset_split" \
-    --name pix7mask_256 \
+    --name  pix7mask_256 \
     --model pix7mask \
-    --netG resnet_9blocks \
+    --netG  resnet_9blocks \
     --display_id  -1 \
     --display_freq 1 \
     --n_epochs 512  --n_epochs_decay 128 \
