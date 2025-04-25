@@ -19,4 +19,4 @@ sbatch \
     -D ${project_dir} \
     -w ${node}  \
     -o "${slurm_out}/%j_${node}.out" \
-    --wrap="singularity exec --nv -B ${project_dir},${data_root} ${simg_path} /bin/bash /win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified/scripts/train_pix7mask_mask.sh"  
+    --wrap="singularity exec --nv -B ${project_dir},${data_root} ${simg_path} /bin/bash /win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified/scripts/train_pix7mask.sh"  
