@@ -5,6 +5,8 @@ import functools
 from torch.optim import lr_scheduler
 
 from . import network_model as custom_network
+from . import aot_model     as aotm
+from . import att_model     as attm
 
 ###############################################################################
 # Helper Functions
@@ -152,6 +154,10 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
     elif netG == 'autoencoder_6blocks':
         net = custom_network.AutoencoderGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks = 6)
+    elif netG == "ae_9aot":
+        net = aotm.AotBasedGenerator(input_nc, output_nc, ngf, norm_layer = norm_layer, use_dropout = use_dropout, n_blocks = 9)
+    elif netG == "ae_9cte":
+        net = attm.ConvTransBasedGenerator(input_nc, output_nc, ngf, norm_layer = norm_layer, use_dropout = use_dropout, n_blocks = 9)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)
