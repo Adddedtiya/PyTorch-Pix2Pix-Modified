@@ -82,17 +82,6 @@ class Pix7MaskModel(BaseModel):
 
         self.internal_mode = 'train' if self.isTrain else 'test'
 
-    def set_mode(self, train = False, test = False) -> None:
-        if train:
-            self.internal_mode = 'train'
-            self.netD.train()
-            self.netG.train()
-        
-        if test:
-            self.internal_mode = 'test'
-            self.netD.eval()
-            self.netG.eval()
-
     def get_current_batch_size(self) -> int:
         return int(self.tensor_indices.shape[0])
 
@@ -190,7 +179,39 @@ class Pix7MaskModel(BaseModel):
         }
         #[print(visual_ret[x].shape) for x in visual_ret.keys()]
         return visual_ret
-    
+
+    def get_current_visuals_test_time(self) -> dict[str, torch.Tensor]:
+        """Return visualization images. train.py will display these images with visdom, and save the images to a HTML"""
+
+        # Only A : torch.Size([4, 1, 256, 256])
+        # Mask A : torch.Size([4, 1, 256, 256])
+        # Real B : torch.Size([4, 1, 256, 256])
+        # Fake B : torch.Size([4, 1, 256, 256])
+        
+        bimask : torch.Tensor =  self.mask_A.to(torch.bool)
+        combined_c = torch.where(
+            condition = bimask,
+            input     = self.fake_B,
+            other     = self.real_B
+        )
+
+        masked_c = torch.where(
+            condition = bimask,
+            input     = self.fake_B,
+            other     = 0
+        )
+
+        visual_ret : dict[str, torch.Tensor] = {
+            'only_A' : self.only_A,
+            'mask_A' : self.mask_A,
+            'fake_B' : self.fake_B,
+            'real_B' : self.real_B,
+            'comb_C' : combined_c,
+            'mask_C' : masked_c
+        }
+        
+        #[print(visual_ret[x].shape) for x in visual_ret.keys()]
+        return visual_ret
     
     def compute_single_batch_acc(self, batch_index : int) -> dict[str, float]:
         batch_mask_info = self.tensor_indices[batch_index] # (2, 2)

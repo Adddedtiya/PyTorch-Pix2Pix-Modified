@@ -92,8 +92,17 @@ class BaseModel(ABC):
         """Make models eval mode during test time"""
         for name in self.model_names:
             if isinstance(name, str):
-                net = getattr(self, 'net' + name)
+                net : torch.nn.Module = getattr(self, 'net' + name)
                 net.eval()
+        self.isTrain = False
+    
+    def train(self):
+        """Make models train mode during test time"""
+        for name in self.model_names:
+            if isinstance(name, str):
+                net : torch.nn.Module = getattr(self, 'net' + name)
+                net.train()
+        self.isTrain = True
 
     def test(self):
         """Forward function used in test time.

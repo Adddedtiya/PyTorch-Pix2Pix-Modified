@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
         # setup model for training - update learning rates in the beginning of every epoch.
         training_variables = GenericDictTracker()
-        model.set_mode(train = True)
+        model.train()
         model.update_learning_rate()
 
         ## Training Loop
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         
         ## Evaluation Loop 
         evaluation_variables = GenericDictTracker()
-        model.set_mode(test = True)
+        model.eval()
         for eval_iters, data in enumerate(eval_dataset):  # inner loop within one epoch
             iter_start_time = time.time()   # timer for computation per iteration
 
