@@ -6,22 +6,23 @@ import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
 import time
+import torch
 
 from options.train_options  import TrainOptions
 from data                   import create_dataset
 from models                 import create_model
-from models.pix7mask_model  import Pix7MaskModel
+from models.base_model      import BaseModel
 from util.visualizer        import Visualizer
 from copy                   import deepcopy
 from util.dictonary_tracker import GenericDictTracker
 from util.dictonary_tracker import AttachedTracker
-
+from util.utx_metrics       import compute_single_batch_pix7mask
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
 
-    ## Insanity check
-    if (opt.model != "pix7mask"): raise Exception("No Peko !")
+    ## Insanity check - bypass peko
+    ## if (opt.model != "pix7mask"): raise Exception("No Peko !")
 
     print("\n# Argument Parsed \n")
 
@@ -39,7 +40,7 @@ if __name__ == '__main__':
     print('The number of evaluation images = %d' % eval_size)
 
     ## Define the model
-    model : Pix7MaskModel = create_model(opt) # create a model given opt.model and other options
+    model : BaseModel = create_model(opt) # create a model given opt.model and other options
     model.setup(opt) # regular setup: load and print networks; create schedulers
 
     ## Define visualiser
@@ -88,10 +89,12 @@ if __name__ == '__main__':
                 save_result = total_iters % opt.update_html_freq == 0
                 visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
 
-            for ss_index in range(0, model.get_current_batch_size()):
-                eval_values = model.compute_single_batch_acc(ss_index)
-                evaluation_variables.append(eval_values)
-                visualizer.print_current_losses(epoch, eval_iters, eval_values, t_comp, prefix = "E")
+            eval_instaces : dict[str, torch.Tensor] = model.get_batch_instances()
+            if eval_instaces: # check if there is a valid overload for ths function
+                for ss_index in range(0, model.get_current_batch_size()):
+                    eval_values = compute_single_batch_pix7mask(eval_instaces, ss_index)
+                    evaluation_variables.append(eval_values)
+                    visualizer.print_current_losses(epoch, eval_iters, eval_values, t_comp, prefix = "E")
         
         print("# Evaluation Values", evaluation_variables.calculate_averages())
 

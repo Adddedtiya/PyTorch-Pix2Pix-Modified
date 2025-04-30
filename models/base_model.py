@@ -150,6 +150,16 @@ class BaseModel(ABC):
                 errors_ret[name] = float(getattr(self, 'loss_' + name))  # float(...) works for both scalar tensor and float number
         return errors_ret
 
+    def get_current_batch_size(self) -> int:
+        for name in self.visual_names:
+            if isinstance(name, str):
+                x : torch.Tensor = getattr(self, name)
+                return int(x.shape[0])
+        return 0 # sanity boundry
+
+    def get_batch_instances(self) -> dict[str, torch.Tensor]:
+        return None
+
     def save_networks(self, epoch : str):
         """Save all the networks to the disk.
 

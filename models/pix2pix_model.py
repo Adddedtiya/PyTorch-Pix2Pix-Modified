@@ -131,3 +131,23 @@ class Pix2PixModel(BaseModel):
         self.optimizer_G.zero_grad()        # set G's gradients to zero
         self.backward_G()                   # calculate graidents for G
         self.optimizer_G.step()             # update G's weights
+
+    def __backport_indicies(self) -> torch.Tensor:
+        batch_size = int(self.fake_B.shape[0])
+        arrx = [[
+            [1.0,                   0.0], 
+            [self.real_B.shape[-1], 0.0]
+        ]] * batch_size
+        return torch.tensor(arrx, dtype = torch.float32)
+
+    # return batch instances
+    def get_batch_instances(self) -> dict[str, torch.Tensor]:
+        dicx = {
+            "fake_B" : self.fake_B,
+            "real_B" : self.real_B,
+            "info_i" : self.__backport_indicies()
+        }
+        return dicx
+    
+    def get_current_batch_size(self):
+        return self.fake_B.shape[0]

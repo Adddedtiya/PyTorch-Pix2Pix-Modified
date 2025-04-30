@@ -7,6 +7,7 @@ from torch.optim import lr_scheduler
 from . import network_model as custom_network
 from . import aot_model     as aotm
 from . import att_model     as attm
+from . import aoe_model     as aoem
 
 ###############################################################################
 # Helper Functions
@@ -158,6 +159,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = aotm.AotBasedGenerator(input_nc, output_nc, ngf, norm_layer = norm_layer, use_dropout = use_dropout, n_blocks = 9)
     elif netG == "ae_9cte":
         net = attm.ConvTransBasedGenerator(input_nc, output_nc, ngf, norm_layer = norm_layer, use_dropout = use_dropout, n_blocks = 9)
+    elif netG == "aoe_ivg":
+        net = aoem.IntegratedVectorGenerator(input_nc, output_nc, ngf, norm_layer = norm_layer)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)
@@ -433,7 +436,8 @@ class ResnetBlock(nn.Module):
 
     def forward(self, x):
         """Forward function (with skip connections)"""
-        out = x + self.conv_block(x)  # add skip connections
+        out  : torch.Tensor = x + self.conv_block(x)  # add skip connections
+        # print("### RESNET :", out.shape)
         return out
 
 

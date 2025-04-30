@@ -3,8 +3,6 @@ from .base_model import BaseModel
 from . import networks
 
 import numpy as np
-from torchmetrics.functional.image import peak_signal_noise_ratio
-from torchmetrics.functional.image import structural_similarity_index_measure
 
 class Pix7MaskModel(BaseModel):
     """ This class implements the pix2pix model, for learning a mapping from input images to output images given paired data.
@@ -213,53 +211,14 @@ class Pix7MaskModel(BaseModel):
         #[print(visual_ret[x].shape) for x in visual_ret.keys()]
         return visual_ret
     
-    def compute_single_batch_acc(self, batch_index : int) -> dict[str, float]:
-        batch_mask_info = self.tensor_indices[batch_index] # (2, 2)
-
-        cc_start = (batch_mask_info[0, 0] == 1.0)
-        cc_end   = (batch_mask_info[0, 1] == 1.0)
-
-        ssim_list : list[float] = []
-        psnr_list : list[float] = []
-
-        # compute masks based on start
-        if cc_start:
-            # start index 
-            start_offset = int(batch_mask_info[1, 0])
-            
-            # crop the real image
-            t_real = self.real_B[batch_index, :, :start_offset, :]
-            t_real = torch.unsqueeze(t_real, dim = 0)
-
-            # crop the fake image
-            t_fake = self.fake_B[batch_index, :, :start_offset, :]
-            t_fake = torch.unsqueeze(t_fake, dim = 0)
-
-            ssim_list.append(structural_similarity_index_measure(t_fake, t_real).item())
-            psnr_list.append(peak_signal_noise_ratio(t_fake, t_real).item())
-
-        if cc_end:
-            backwards_index = int(batch_mask_info[1, 1])
-
-            # crop the real image
-            t_real = self.real_B[batch_index, :, backwards_index:, :]
-            t_real = torch.unsqueeze(t_real, dim = 0)
-
-            # crop the fake image
-            t_fake = self.fake_B[batch_index, :, backwards_index:, :]
-            t_fake = torch.unsqueeze(t_fake, dim = 0)
-
-            ssim_list.append(structural_similarity_index_measure(t_fake, t_real).item())
-            psnr_list.append(peak_signal_noise_ratio(t_fake, t_real).item())
-        
-        #print(ssim_list)
-        #print(psnr_list)
-
-        ssim_mean = torch.mean(torch.tensor(ssim_list)).item()
-        psnr_mean = torch.mean(torch.tensor(psnr_list)).item()
-
-        xdict = {
-            'peak_signal_noise_ratio' : psnr_mean,
-            'structural_similarity_index_measure' : ssim_mean
+    # return batch instances
+    def get_batch_instances(self) -> dict[str, torch.Tensor]:
+        dicx = {
+            "fake_B" : self.fake_B,
+            "real_B" : self.real_B,
+            "info_i" : self.tensor_indices
         }
-        return xdict
+        return dicx
+    
+    def get_current_batch_size(self):
+        return self.tensor_indices.shape[0]
