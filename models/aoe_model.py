@@ -86,72 +86,24 @@ class BasicCompactBottleNeck(nn.Module):
 
             # 256, 64, 64
             nn.Conv2d(256, 512, kernel_size = 3, stride = 2, padding = 1, bias = use_bias),
+            norm_layer(512),
+            nn.ReLU(),
+
+            # 512, 32, 32
             nn.Conv2d(512, 512, kernel_size = 3, stride = 2, padding = 1, bias = use_bias),
             norm_layer(512),
-            nn.GELU(),
+            nn.ReLU(),
 
             # 512, 16, 16
-            nn.Conv2d(512, 1024,  kernel_size = 3, stride = 2, padding = 1, bias = use_bias),
-            nn.Conv2d(1024, 1024, kernel_size = 3, stride = 2, padding = 1, bias = use_bias),
-            norm_layer(1024),
-            nn.GELU(),
-
-            # 1024, 4, 4
-            nn.Conv2d(1024, 2048, kernel_size = 3, stride = 2, padding = 1, bias = use_bias),
-            nn.Conv2d(2048, 2048, kernel_size = 3, stride = 2, padding = 1, bias = use_bias),
-            norm_layer(2048),
-            nn.GELU(),
-
-            # 2048, 1, 1
         ]
         self.encoder = nn.Sequential(*encoder)
 
         self.neck = nn.Sequential(
-            nn.Conv2d(2048, 2048, kernel_size = 1, padding = 0),
-            nn.Hardtanh()
+            nn.Conv2d(512, 512, kernel_size = 1, padding = 0),
+            nn.ReLU()
         )
 
         decoder = [
-            
-            # 2048, 1, 1
-            nn.ConvTranspose2d(
-                2048, 1024,
-                kernel_size    = 3, 
-                stride         = 2,
-                padding        = 1, 
-                output_padding = 1,
-                bias           = use_bias
-            ),
-            nn.ConvTranspose2d(
-                1024, 1024,
-                kernel_size    = 3, 
-                stride         = 2,
-                padding        = 1, 
-                output_padding = 1,
-                bias           = use_bias
-            ),
-            norm_layer(1024),
-            nn.GELU(),
-
-            # 1024, 4, 4
-            nn.ConvTranspose2d(
-                1024, 512,
-                kernel_size    = 3, 
-                stride         = 2,
-                padding        = 1, 
-                output_padding = 1,
-                bias           = use_bias
-            ),
-            nn.ConvTranspose2d(
-                512, 512,
-                kernel_size    = 3, 
-                stride         = 2,
-                padding        = 1, 
-                output_padding = 1,
-                bias           = use_bias
-            ),
-            norm_layer(512),
-            nn.GELU(),
             
             # 512, 16, 16
             nn.ConvTranspose2d(
@@ -162,6 +114,10 @@ class BasicCompactBottleNeck(nn.Module):
                 output_padding = 1,
                 bias           = use_bias
             ),
+            norm_layer(256),
+            nn.ReLU(),
+
+            # 256, 32, 32
             nn.ConvTranspose2d(
                 256, 256,
                 kernel_size    = 3, 
@@ -171,7 +127,7 @@ class BasicCompactBottleNeck(nn.Module):
                 bias           = use_bias
             ),
             norm_layer(256),
-            nn.GELU(),
+            nn.ReLU(),
 
             # 256, 64, 64
         ]
@@ -189,7 +145,7 @@ if __name__ == "__main__":
     print("AOE")
 
 
-    m = IntegratedVectorGenerator(1, 1,)
+    m = IntegratedVectorGenerator(1, 1)
     m.eval()
 
     # Example input tensor

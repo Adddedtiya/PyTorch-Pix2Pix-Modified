@@ -7,7 +7,7 @@ from data                   import create_dataset
 from models                 import create_model
 from util.visualizer        import save_images
 from util                   import html
-from models.pix7mask_model  import Pix7MaskModel
+from models.base_model      import BaseModel
 from tqdm                   import tqdm
 
 if __name__ == '__main__':
@@ -24,9 +24,9 @@ if __name__ == '__main__':
     dataset = create_dataset(opt)  
     
     # Create the Model
-    model : Pix7MaskModel = create_model(opt)   # create a model given opt.model and other options
-    model.setup(opt)                            # regular setup: load and print networks; create schedulers
-    model.eval()                                # set the model on evaluation mode
+    model : BaseModel = create_model(opt)   # create a model given opt.model and other options
+    model.setup(opt)                        # regular setup: load and print networks; create schedulers
+    model.eval()                            # set the model on evaluation mode
 
     # create a website
     web_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))  # define the website directory
@@ -44,8 +44,8 @@ if __name__ == '__main__':
         model.set_input(data)  # unpack data from data loader
         model.test()           # run inference
         
-        visuals  = model.get_current_visuals_test_time()  # get image results
-        img_path = model.get_image_paths()                # get image paths
+        visuals  = model.get_current_visuals()  # get image results
+        img_path = model.get_image_paths()      # get image paths
         
         #if i % 5 == 0:  # save images to an HTML file
         #    print('processing (%04d)-th image... %s' % (i, img_path))
