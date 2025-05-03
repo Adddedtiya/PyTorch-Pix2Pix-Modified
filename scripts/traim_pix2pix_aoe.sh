@@ -9,4 +9,5 @@ set -ex
     --n_epochs 1024 --n_epochs_decay 128 \
     --load_size 256 --crop_size 256 \
     --input_nc 1    --output_nc 1 \
-    --batch_size 16
+    --batch_size 16 \
+    --lr 5e-4
