@@ -95,16 +95,33 @@ class BasicCompactBottleNeck(nn.Module):
             nn.ReLU(),
 
             # 512, 16, 16
+            nn.Conv2d(512, 960, kernel_size = 3, stride = 2, padding = 1, bias = use_bias),
+            norm_layer(960),
+            nn.ReLU(),
+
+            # 960, 8, 8
         ]
         self.encoder = nn.Sequential(*encoder)
 
         self.neck = nn.Sequential(
-            nn.Conv2d(512, 512, kernel_size = 1, padding = 0),
-            nn.ReLU()
+            nn.Conv2d(960, 960, kernel_size = 1, padding = 0),
+            nn.Hardtanh(min_val = 0, max_val = 1)
         )
 
         decoder = [
             
+            # 960, 8, 8
+            nn.ConvTranspose2d(
+                960, 512,
+                kernel_size    = 3, 
+                stride         = 2,
+                padding        = 1, 
+                output_padding = 1,
+                bias           = use_bias
+            ),
+            norm_layer(512),
+            nn.ReLU(),
+
             # 512, 16, 16
             nn.ConvTranspose2d(
                 512, 256,
