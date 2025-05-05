@@ -44,7 +44,7 @@ class Pix3PixModel(BaseModel):
         """
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['G_GAN', 'G_L1', 'D_real', 'D_fake']
+        self.loss_names = ['G_GAN', 'G_L1', 'D_real', 'D_fake', "G_VEC_L2"]
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         self.visual_names = ['real_A', 'fake_B', 'real_B']
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>
@@ -53,7 +53,7 @@ class Pix3PixModel(BaseModel):
         else:  # during test time, only load G
             self.model_names = ['G']
         # define networks (both generator and discriminator)
-        self.netG : aovm.IntegratedVectorV2Generator = networks.define_G(
+        self.netG = networks.define_G(
             opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
             not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
 
@@ -93,7 +93,8 @@ class Pix3PixModel(BaseModel):
 
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_B = self.netG(self.real_A)  # G(A)
+        self.fake_B, self.loss_G_VEC_L2 = self.netG(self.real_A)  # G(A)
+        #print(self.vector_loss.dtype)
 
     def backward_D(self):
         """Calculate GAN loss for the discriminator"""
@@ -120,16 +121,19 @@ class Pix3PixModel(BaseModel):
         self.loss_G_L1 = self.criterionL1(self.fake_B, self.real_B) * self.opt.lambda_L1
         
         # combine loss and calculate gradients
-        self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.netG.neck.loss
+        self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_VEC_L2
+        #print(self.loss_G.dtype)
         self.loss_G.backward()
 
     def optimize_parameters(self):
         self.forward()                   # compute fake images: G(A)
+        
         # update D
         self.set_requires_grad(self.netD, True)  # enable backprop for D
         self.optimizer_D.zero_grad()     # set D's gradients to zero
         self.backward_D()                # calculate gradients for D
         self.optimizer_D.step()          # update D's weights
+        
         # update G
         self.set_requires_grad(self.netD, False)  # D requires no gradients when optimizing G
         self.optimizer_G.zero_grad()        # set G's gradients to zero
