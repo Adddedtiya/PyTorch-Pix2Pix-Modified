@@ -8,6 +8,7 @@ from . import network_model as custom_network
 from . import aot_model     as aotm
 from . import att_model     as attm
 from . import aov_model     as aovm
+from . import mnv_model     as mnvm
 
 ###############################################################################
 # Helper Functions
@@ -169,6 +170,15 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)
 
+def custom_generator(netG : str, input_nc : int, output_nc : int, blocks_count : int, ratio_scale : int, timm_text = "", init_type = 'normal', init_gain = 0.02, gpu_ids = []) -> nn.DataParallel:
+    net = None
+
+    if netG == "ae_vec_mv4":
+        net = mnvm.IntegratedMobileNetVectorGenerator(input_nc, output_nc, blocks_count, ratio_scale, timm_text)
+    else:
+        raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
+
+    return init_net(net, init_type, init_gain, gpu_ids)
 
 def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02, gpu_ids=[]):
     """Create a discriminator

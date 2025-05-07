@@ -1,7 +1,6 @@
 import torch
 from .base_model import BaseModel
 from . import networks
-from . import aov_model as aovm
 
 class Pix3PixModel(BaseModel):
     """ This class implements the pix2pix model, for learning a mapping from input images to output images given paired data.
@@ -30,6 +29,12 @@ class Pix3PixModel(BaseModel):
         """
         # changing the default values to match the pix2pix paper (https://phillipi.github.io/pix2pix/)
         parser.set_defaults(norm='batch', netG='unet_256', dataset_mode='aligned')
+        
+        # additional parameters
+        parser.add_argument('--blocks_count', type = int, help = 'block count', default = 3)
+        parser.add_argument('--blocks_ratio', type = int, help = 'block ratio', default = 2)
+        parser.add_argument('--timm',         type = str, help = 'timm model')
+
         if is_train:
             parser.set_defaults(pool_size=0, gan_mode='vanilla')
             parser.add_argument('--lambda_L1', type=float, default=100.0, help='weight for L1 loss')
@@ -52,14 +57,19 @@ class Pix3PixModel(BaseModel):
             self.model_names = ['G', 'D']
         else:  # during test time, only load G
             self.model_names = ['G']
+        
         # define networks (both generator and discriminator)
-        self.netG = networks.define_G(
-            opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
-            not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+        self.netG = networks.custom_generator(
+            opt.netG, opt.input_nc, opt.output_nc, opt.blocks_count, opt.blocks_ratio, opt.timm, 
+            opt.init_type, opt.init_gain, self.gpu_ids
+        )
 
-        if self.isTrain:  # define a discriminator; conditional GANs need to take both input and output images; Therefore, #channels for D is input_nc + output_nc
-            self.netD = networks.define_D(opt.input_nc + opt.output_nc, opt.ndf, opt.netD,
-                                          opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+        # define a discriminator; conditional GANs need to take both input and output images; Therefore, #channels for D is input_nc + output_nc
+        if self.isTrain:  
+            self.netD = networks.define_D(
+                opt.input_nc + opt.output_nc, opt.ndf, opt.netD,
+                opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids
+            )
 
         if self.isTrain:
             # define loss functions
