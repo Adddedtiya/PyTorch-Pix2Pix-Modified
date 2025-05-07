@@ -7,6 +7,7 @@
     --timm "mobilenetv4_conv_small.e2400_r224_in1k" \
     --display_id  -1 \
     --display_freq 1 \
+    --num_threads 6 \
     --n_epochs 512  --n_epochs_decay 128 \
     --load_size 256 --crop_size 256 \
     --input_nc 1    --output_nc 1 \
