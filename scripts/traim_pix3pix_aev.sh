@@ -1,9 +1,9 @@
-set -ex
+# set -ex
 /usr/bin/python3.11 /win/scallop/user/aditya/Pix2Pix/PyTorch-Pix2Pix-Modified/modified_train.py \
     --dataset_mode reconstruction \
     --dataroot "/win/scallop/user/aditya/PelvisRongensDataset/dataset_split" \
-    --name  pix3pix_aev_v3_512 --model pix3pix \
-    --netG  ae_vec_v3 \
+    --name  pix3pix_aev_v4_512 --model pix3pix \
+    --netG  ae_vec_v4 \
     --display_id  -1 \
     --display_freq 1 \
     --n_epochs 512  --n_epochs_decay 128 \

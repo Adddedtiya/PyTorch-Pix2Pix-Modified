@@ -163,6 +163,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = aovm.IntegratedVectorV2Generator(input_nc, output_nc, ngf, norm_layer = norm_layer)
     elif netG == "ae_vec_v3":
         net = aovm.IntegratedVectorV2Generator(input_nc, output_nc, ngf, norm_layer = norm_layer, use_v3 = True)
+    elif netG == "ae_vec_v4":
+        net = aovm.IntegratedVectorV2Generator(input_nc, output_nc, ngf, norm_layer = norm_layer, use_v4 = True)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)

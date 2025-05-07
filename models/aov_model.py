@@ -10,7 +10,7 @@ class IntegratedVectorV2Generator(nn.Module):
     We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
     """
 
-    def __init__(self, input_nc, output_nc, ngf = 64, norm_layer = nn.BatchNorm2d, use_v3 = False):
+    def __init__(self, input_nc, output_nc, ngf = 64, norm_layer = nn.BatchNorm2d, use_v3 = False, use_v4 = False):
         """Construct a Resnet-based generator
 
         Parameters:
@@ -54,6 +54,7 @@ class IntegratedVectorV2Generator(nn.Module):
         
         # Internal Blocks !
         self.neck = CoreVectorNeckV3(512, 512) if use_v3 else CoreVectorNeck(512, 960, 512)
+        self.neck = CoreVectorNeckV4(512, 512) if use_v4 else self.neck
 
         ## DECODER
         decoder_blocks : list[nn.Module] = []
@@ -205,6 +206,62 @@ class CoreVectorNeckV3(nn.Module):
 
         return xout, self.loss
 
+# V4
+class CoreVectorNeckV4(nn.Module):
+    def __init__(self, input_channels : int, output_channels : int):
+        super().__init__()
+
+        # N, 512, 8, 8
+        self.internal_encoder = nn.Sequential(
+            nn.Conv2d(input_channels, 128, kernel_size = 3, stride = 2, padding = 1, bias = True),
+            nn.BatchNorm2d(128),
+            nn.Hardtanh(),
+
+            nn.Conv2d(128, 64, kernel_size = 3, padding = 'same', bias = True),
+            nn.BatchNorm2d(64),
+            nn.Hardtanh(),
+
+            nn.Conv2d(64, 16, kernel_size = 3, padding = 'same', bias = True),
+        )
+
+        self.internal_decoder = nn.Sequential(
+            nn.Conv2d(16, 64, kernel_size = 3, padding = 'same', bias = True),
+            nn.BatchNorm2d(64),
+            nn.GELU(),
+
+            nn.ConvTranspose2d(
+                64, 128,
+                kernel_size    = 3, 
+                stride         = 2,
+                padding        = 1, 
+                output_padding = 1,
+                bias           = True
+            ),
+            nn.BatchNorm2d(128),
+            nn.GELU(),
+
+            nn.Conv2d(128, output_channels, kernel_size = 3, padding = 'same', bias = True),
+            nn.BatchNorm2d(output_channels),
+            nn.ReLU()
+        )
+    
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        input_vec = self.internal_encoder(x)
+
+        # quantize the vector
+        self.q_vec = torch.nn.functional.hardtanh(input_vec)
+        self.q_vec = torch.where(self.q_vec > 0, 1.0, -1.0)
+        #print("v4: ",x.shape, input_vec.shape, self.q_vec.shape)
+
+        # compute_loss
+        self.loss = F.mse_loss(self.q_vec, input_vec)
+
+        # Straight-through estimator trick for gradient backpropagation
+        self.z_q = input_vec + (self.q_vec - input_vec).detach()
+
+        xout = self.internal_decoder(self.z_q)
+
+        return xout, self.loss
 
 class BasicDownsample(nn.Module):
     def __init__(self, input_channels : int, output_channels : int, bias : bool, norm_layer : nn.Module):
@@ -243,7 +300,7 @@ if __name__ == "__main__":
     print("AOE")
 
 
-    m = IntegratedVectorV2Generator(1, 1, use_v2 = True)
+    m = IntegratedVectorV2Generator(1, 1, use_v4 = True)
     m.eval()
 
     # Example input tensor
