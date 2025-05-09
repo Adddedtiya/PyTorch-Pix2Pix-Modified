@@ -9,6 +9,7 @@ from . import aot_model     as aotm
 from . import att_model     as attm
 from . import aov_model     as aovm
 from . import mnv_model     as mnvm
+from . import gtbg_model    as mgtb
 
 ###############################################################################
 # Helper Functions
@@ -175,6 +176,8 @@ def custom_generator(netG : str, input_nc : int, output_nc : int, blocks_count :
 
     if netG == "ae_vec_mv4":
         net = mnvm.IntegratedMobileNetVectorGenerator(input_nc, output_nc, blocks_count, ratio_scale, timm_text)
+    if netG == "vitvae_256":
+        net = mgtb.SimpleVitVaeWrapper(input_nc, output_nc, input_size = 256)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
 
