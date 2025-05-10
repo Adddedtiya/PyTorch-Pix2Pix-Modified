@@ -9,7 +9,8 @@ from . import aot_model     as aotm
 from . import att_model     as attm
 from . import aov_model     as aovm
 from . import mnv_model     as mnvm
-from . import gtbg_model    as mgtb
+
+from . import TransBaseVision as tbv_modules
 
 ###############################################################################
 # Helper Functions
@@ -176,10 +177,30 @@ def custom_generator(netG : str, input_nc : int, output_nc : int, blocks_count :
 
     if netG == "ae_vec_mv4":
         net = mnvm.IntegratedMobileNetVectorGenerator(input_nc, output_nc, blocks_count, ratio_scale, timm_text)
-    if netG == "vitvae_256":
-        net = mgtb.SimpleVitVaeWrapper(input_nc, output_nc, input_size = 256)
+    if netG == "simvit_256":
+        net = tbv_modules.SimpleVitVaeWrapper(input_nc, output_nc, input_size = 256)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
+
+    return init_net(net, init_type, init_gain, gpu_ids)
+
+def custom_vit_based(netG : str, input_nc : int, output_nc : int, image_size : int, patch_size : int, latent_size : int, encoder_depth : int, decoder_depth : int, heads : int, ff_dim : int, init_type = 'normal', init_gain = 0.02, gpu_ids = []) -> nn.DataParallel:
+    net = None
+
+    if netG == "simvit_256":
+        net = tbv_modules.ViTARwMWrapper(
+            input_channels  = input_nc,
+            output_channels = output_nc,
+            image_size      = image_size,
+            patch_size      = patch_size,
+            latent_size     = latent_size,
+            encoder_depth   = encoder_depth,
+            decoder_depth   = decoder_depth,
+            heads           = heads,
+            ff_dim          = ff_dim 
+        )
+    else:
+        raise NotImplementedError('Generator model name [%s] is not recognized in ViT like Modules' % netG)
 
     return init_net(net, init_type, init_gain, gpu_ids)
 

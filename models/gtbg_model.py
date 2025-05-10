@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+### FOR THE LOVE OF THINGS THAT IS WHOLY, DONT USE THIS CODE PLEASE
+
 class VectorQuantizer(nn.Module):
     """
     Basic Vector Quantizer.
