@@ -13,4 +13,5 @@ set -ex
     --patch_size 16 \
     --encoder_depth 11 \
     --decoder_depth 17 \
-    --batch_size 16
+    --batch_size 16 \
+    --lr 5e-4 

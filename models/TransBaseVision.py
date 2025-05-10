@@ -282,5 +282,5 @@ if __name__ == "__main__":
     j = h(t, unmasked_indices)
     print(j.shape)
 
-    from torchinfo import summary
-    summary(h, input_data = (t, unmasked_indices))
+    # from torchinfo import summary
+    # summary(h, input_data = (t, unmasked_indices))
