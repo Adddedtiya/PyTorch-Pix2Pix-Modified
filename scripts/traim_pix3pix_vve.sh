@@ -10,4 +10,5 @@
     --load_size 256 --crop_size 256 \
     --input_nc 1    --output_nc 1 \
     --batch_size 16 \
-    --lr 5e-4
+    --lr 5e-4 \
+    --gpu_ids 0
