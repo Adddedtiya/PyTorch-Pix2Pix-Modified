@@ -155,6 +155,9 @@ class Vit7MaskModel(BaseModel):
             w  = int(w // self.patch_size)
         )
 
+        # round the values i think ?
+        reconstructed_image_tensor = (reconstructed_image_tensor - reconstructed_image_tensor.min()) / (reconstructed_image_tensor.max() - reconstructed_image_tensor.min())
+
         return reconstructed_image_tensor
 
 
