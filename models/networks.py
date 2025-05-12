@@ -11,6 +11,7 @@ from . import aov_model     as aovm
 from . import mnv_model     as mnvm
 
 from . import TransBaseVisionModified as tbv_modules
+from . import TransVitConv            as tvc_modules
 
 ###############################################################################
 # Helper Functions
@@ -196,6 +197,17 @@ def custom_vit_based(netG : str, input_nc : int, output_nc : int, image_size : i
             latent_size     = latent_size,
             encoder_depth   = encoder_depth,
             decoder_depth   = decoder_depth,
+            heads           = heads,
+            ff_dim          = ff_dim 
+        )
+    elif netG == "vitconv_256":
+        net = tvc_modules.MaskedVisionVCTModel(
+            input_channels  = input_nc,
+            output_channels = output_nc,
+            image_size      = image_size,
+            patch_size      = patch_size,
+            latent_size     = latent_size,
+            encoder_depth   = encoder_depth,
             heads           = heads,
             ff_dim          = ff_dim 
         )
