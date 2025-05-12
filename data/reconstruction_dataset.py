@@ -27,8 +27,9 @@ class ReconstructionDataset(BaseDataset):
         
         # get the image paths of your dataset;
         self.image_files : list[str] = []
-
-        self.is_training = bool(str(opt.phase).lower() == 'train')
+        
+        self.subset      = str(opt.phase).lower()
+        self.is_training = bool(self.subset == 'train')
         self.img_load_size  = int(opt.load_size)
         self.img_final_size = int(opt.crop_size)
 
@@ -38,6 +39,12 @@ class ReconstructionDataset(BaseDataset):
 
         self.image_files += sorted(make_dataset(image_root_directory, opt.max_dataset_size))  # get image paths
         
+        # base augmentation procesing
+        self.prepare_images = A.Compose([
+            A.LongestMaxSize(self.img_load_size),
+            A.PadIfNeeded(self.img_final_size, self.img_final_size),
+        ])
+
         # Image Augmentation Pipeline
         self.transform_image = A.Compose([
             A.LongestMaxSize(self.img_load_size),
@@ -46,9 +53,19 @@ class ReconstructionDataset(BaseDataset):
             A.HorizontalFlip(),
             A.VerticalFlip(),
         ]) if self.is_training else A.Compose([
-            A.LongestMaxSize(self.img_load_size),
             A.PadIfNeeded(self.img_final_size, self.img_final_size),
         ])
+
+        # load data to memory
+        self.image_array_list : list[np.ndarray] = [] 
+        for image_path in self.image_files:
+            original_image = self.__load_rongen(image_path)
+            original_image = self.prepare_images(image = original_image)['image']
+            original_image = np.clip(original_image, 0, 1)
+            original_image = original_image.astype(np.float32)
+            self.image_array_list.append(original_image)
+
+        print(f"# Loaded '{self.subset}' with", len(self.image_array_list))
 
     def __load_rongen(self, fpath : str) -> np.ndarray:
         orig_image = cv.imread(fpath, cv.IMREAD_ANYDEPTH)
@@ -72,9 +89,7 @@ class ReconstructionDataset(BaseDataset):
         
         # We are working in Grayscale Image Domain !!! Yay !
         image_file_path = self.image_files[index]
-
-        # load image with norm
-        original_image = self.__load_rongen(image_file_path)
+        original_image  = self.image_array_list[index]
 
         augmented_img = self.transform_image(image = original_image)['image']
         augmented_img = np.clip(augmented_img, 0, 1)

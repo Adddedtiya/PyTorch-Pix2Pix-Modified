@@ -1,23 +1,83 @@
 import torch
 import torch.nn as nn
 from einops     import rearrange, reduce, repeat
-from torch.nn   import TransformerEncoder, TransformerEncoderLayer
+
+class FeedForward(nn.Module):
+    def __init__(self, dim, hidden_dim, dropout = 0.):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, dim),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Attention(nn.Module):
+    def __init__(self, dim, heads = 8, dim_head = 64, dropout = 0.):
+        super().__init__()
+        inner_dim = dim_head *  heads
+        project_out = not (heads == 1 and dim_head == dim)
+
+        self.heads = heads
+        self.scale = dim_head ** -0.5
+
+        self.norm = nn.LayerNorm(dim)
+
+        self.attend = nn.Softmax(dim = -1)
+        self.dropout = nn.Dropout(dropout)
+
+        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
+
+        self.to_out = nn.Sequential(
+            nn.Linear(inner_dim, dim),
+            nn.Dropout(dropout)
+        ) if project_out else nn.Identity()
+
+    def forward(self, x):
+        x = self.norm(x)
+
+        qkv = self.to_qkv(x).chunk(3, dim = -1)
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
+
+        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
+
+        attn = self.attend(dots)
+        attn = self.dropout(attn)
+
+        out = torch.matmul(attn, v)
+        out = rearrange(out, 'b h n d -> b n (h d)')
+        return self.to_out(out)
+
+class CustomTransformer(nn.Module):
+    def __init__(self, dim : int, depth : int, heads : int, dim_head : int, mlp_dim : int, dropout = 0.):
+        super().__init__()
+        self.norm = nn.LayerNorm(dim)
+        self.layers = nn.ModuleList([])
+        for _ in range(depth):
+            self.layers.append(nn.ModuleList([
+                Attention(dim, heads = heads, dim_head = dim_head, dropout = dropout),
+                FeedForward(dim, mlp_dim, dropout = dropout)
+            ]))
+
+    def forward(self, x):
+        for attn, ff in self.layers:
+            x = attn(x) + x
+            x = ff(x) + x
+
+        return self.norm(x)
 
 class TransEncoder(nn.Module):
     def __init__(self, dim : int, depth : int, heads : int, mlp_dim : int, dropout = 0.0):
         super().__init__()
-        self.transformer_encoder = TransformerEncoder(
-            TransformerEncoderLayer(
-                d_model         = dim, 
-                nhead           = heads, 
-                dim_feedforward = mlp_dim, 
-                dropout         = dropout, 
-                batch_first     = True,
-                activation      = nn.functional.gelu
-            ), 
-            num_layers = depth
+        self.transformer_encoder = CustomTransformer(
+            dim, depth, heads, heads, mlp_dim, dropout
         )
-
+        
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         return self.transformer_encoder(x) 
 
@@ -189,7 +249,7 @@ class ViTARwMWrapper(nn.Module):
     def __init__(self, input_channels : int, output_channels : int, image_size : int, patch_size : int, latent_size : int, encoder_depth : int, decoder_depth : int, heads : int, ff_dim : int):
         super().__init__()
 
-        self.wrapped_encoder = BasicViTEncoder(
+        wrapped_encoder = BasicViTEncoder(
             input_channels = input_channels,
             image_size     = image_size,
             patch_size     = patch_size,
@@ -198,8 +258,8 @@ class ViTARwMWrapper(nn.Module):
             heads          = heads,
             ff_dim         = ff_dim 
         )
-        self.wrapped_decoder = BasicViTDecoder(
-            output_channels = output_channels * 4,
+        wrapped_decoder = BasicViTDecoder(
+            output_channels = output_channels,
             image_size      = image_size,
             patch_size      = patch_size,
             latent_size     = latent_size,
@@ -209,25 +269,57 @@ class ViTARwMWrapper(nn.Module):
         )
 
         self.wrapper = SimpleViTAEwM(
-            encoder = self.wrapped_encoder,
-            decoder = self.wrapped_decoder
+            encoder = wrapped_encoder,
+            decoder = wrapped_decoder
+        )
+    
+
+    def create_random_visible_indicies(self, visible_patches : float = 0.5, device = 'cpu') -> torch.Tensor:
+        # create the indicies
+        path_ratio   = int(visible_patches * self.wrapper.encoder.total_patches)
+        rand_indices = torch.rand(1, self.wrapper.encoder.total_patches, device = device).argsort(dim = -1)
+        
+        # select the indicies
+        visible_indicies = rand_indices[:, :path_ratio]
+        return visible_indicies
+
+    def reconstruct_visible_patches(self, input_image_tensor : torch.Tensor, visible_indicies : torch.Tensor) -> torch.Tensor:
+        
+        # flatten the input image
+        flatten_input_patches =  rearrange(
+            input_image_tensor, 
+            "n c (h ph) (w pw) -> n (h w) (ph pw c)", 
+            ph = self.wrapper.encoder.patch_height, pw = self.wrapper.encoder.patch_width
         )
 
-        self.conv = nn.Sequential(
-            nn.Conv2d(output_channels * 4, output_channels * 2, kernel_size = 3, padding = 'same'),
-            nn.BatchNorm2d(output_channels * 2),
-            nn.ReLU(),
-            nn.Conv2d(output_channels * 2, output_channels * 1, kernel_size = 3, padding = 'same'),
-            nn.BatchNorm2d(output_channels * 1),
-            nn.Sigmoid()
+        # torch information
+        tensor_device = input_image_tensor.device
+        batch_size, _, _, _ = input_image_tensor.shape
+
+        # create batch indexes
+        selected_batch_range = torch.arange(batch_size, device = tensor_device).reshape(batch_size, 1)
+        
+        # select the patches
+        visible_patches = flatten_input_patches[selected_batch_range, visible_indicies]
+
+        # reconstrcut tensor
+        target_flatten_tensor = torch.zeros_like(flatten_input_patches, device = tensor_device)
+        target_flatten_tensor[selected_batch_range, visible_indicies] = visible_patches
+
+        image_tensor = rearrange(
+            target_flatten_tensor, 
+            "n (h w) (ph pw c) -> n c (h ph) (w pw)", 
+            ph = self.wrapper.decoder.patch_height, 
+            pw = self.wrapper.decoder.patch_width,
+            c  = self.wrapper.decoder.output_channels,
+            h  = int(self.wrapper.decoder.image_height // self.wrapper.decoder.patch_height),
+            w  = int(self.wrapper.decoder.image_width  // self.wrapper.decoder.patch_width)
         )
 
+        return image_tensor
 
     def forward(self, x : torch.Tensor, visible_indicies : torch.Tensor) -> torch.Tensor:
-        p = self.wrapper(x, visible_indicies)
-        p = self.conv(p)
-        return p
-
+        return self.wrapper(x, visible_indicies)
 
 if __name__ == "__main__":
     print("Basic Transfomer Blocks")

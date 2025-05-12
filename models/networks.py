@@ -10,7 +10,7 @@ from . import att_model     as attm
 from . import aov_model     as aovm
 from . import mnv_model     as mnvm
 
-from . import TransBaseVision as tbv_modules
+from . import TransBaseVisionModified as tbv_modules
 
 ###############################################################################
 # Helper Functions
@@ -187,7 +187,7 @@ def custom_generator(netG : str, input_nc : int, output_nc : int, blocks_count :
 def custom_vit_based(netG : str, input_nc : int, output_nc : int, image_size : int, patch_size : int, latent_size : int, encoder_depth : int, decoder_depth : int, heads : int, ff_dim : int, init_type = 'normal', init_gain = 0.02, gpu_ids = []) -> nn.DataParallel:
     net = None
 
-    if netG == "simvit_256":
+    if netG == "simvit_256_v2":
         net = tbv_modules.ViTARwMWrapper(
             input_channels  = input_nc,
             output_channels = output_nc,

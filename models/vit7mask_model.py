@@ -74,6 +74,7 @@ class Vit7MaskModel(BaseModel):
         # setup variables for patches
         self.image_size      = int(opt.crop_size)
         self.patch_size      = int(opt.patch_size)
+        self.output_ch       = int(opt.output_nc)
         self.total_patches   = int((self.image_size // self.patch_size) * (self.image_size // self.patch_size))
         self.visible_patches = int(opt.visible_patches)
         
@@ -116,49 +117,51 @@ class Vit7MaskModel(BaseModel):
     def get_current_batch_size(self) -> int:
         return int(self.tensor_indices.shape[0])
 
-    def create_random_visible_indicies(self) -> torch.Tensor:
+    # create random indicies
+    def create_random_visible_indicies(self, visible_patches : float = 0.5, device = 'cpu') -> torch.Tensor:
         # create the indicies
-        path_ratio   = int(self.visible_patches * self.total_patches)
-        rand_indices = torch.rand(1, self.total_patches, device = self.device).argsort(dim = -1)
+        path_ratio   = int(visible_patches * self.total_patches)
+        rand_indices = torch.rand(1, self.total_patches, device = device).argsort(dim = -1)
         
         # select the indicies
         visible_indicies = rand_indices[:, :path_ratio]
         return visible_indicies
 
-
-    def reconstruct_image(self, image_tensor : torch.Tensor, visible_indicies : torch.Tensor) -> torch.Tensor:
-        # we are working in CPU space for sanity
-        visible_indicies = visible_indicies.to('cpu')
-        image_tensor     = image_tensor.to('cpu')
-
-        # get picture original shape
-        b, c, h, w = image_tensor.shape
-        batch_range = torch.arange(b, device = 'cpu').reshape(b, 1)
-
-        flatten_image_tensor = rearrange(
-            image_tensor, "n c (h ph) (w pw) -> n (h w) (ph pw c)", 
+    # Reconstrcut the visible part of the image
+    def reconstruct_visible_patches(self, input_image_tensor : torch.Tensor, visible_indicies : torch.Tensor) -> torch.Tensor:
+        
+        # flatten the input image
+        flatten_input_patches =  rearrange(
+            input_image_tensor, 
+            "n c (h ph) (w pw) -> n (h w) (ph pw c)", 
             ph = self.patch_size, pw = self.patch_size
         )
 
-        # flatten tensor
-        target_flatten_tensor = torch.zeros_like(flatten_image_tensor, device = 'cpu')
-        target_flatten_tensor[batch_range, visible_indicies] = flatten_image_tensor[batch_range, visible_indicies]
+        # torch information
+        tensor_device = input_image_tensor.device
+        batch_size, _, _, _ = input_image_tensor.shape
 
-        # reshape it back to the original image
-        reconstructed_image_tensor = rearrange(
+        # create batch indexes
+        selected_batch_range = torch.arange(batch_size, device = tensor_device).reshape(batch_size, 1)
+        
+        # select the patches
+        visible_patches = flatten_input_patches[selected_batch_range, visible_indicies]
+
+        # reconstrcut tensor
+        target_flatten_tensor = torch.zeros_like(flatten_input_patches, device = tensor_device)
+        target_flatten_tensor[selected_batch_range, visible_indicies] = visible_patches
+
+        image_tensor = rearrange(
             target_flatten_tensor, 
             "n (h w) (ph pw c) -> n c (h ph) (w pw)", 
             ph = self.patch_size, 
             pw = self.patch_size,
-            c  = c,
-            h  = int(h // self.patch_size),
-            w  = int(w // self.patch_size)
+            c  = self.output_ch,
+            h  = int(self.image_size  // self.patch_size),
+            w  = int(self.image_size  // self.patch_size)
         )
 
-        # round the values i think ?
-        reconstructed_image_tensor = (reconstructed_image_tensor - reconstructed_image_tensor.min()) / (reconstructed_image_tensor.max() - reconstructed_image_tensor.min())
-
-        return reconstructed_image_tensor
+        return image_tensor
 
 
     def set_input(self, input : dict[str, torch.Tensor], visible_indicies : torch.Tensor = None):
@@ -177,10 +180,13 @@ class Vit7MaskModel(BaseModel):
         self.image_paths = str(input['A_paths'])
 
         # random visible indicies for forward pass
-        self.visible_indicies = visible_indicies if visible_indicies != None else self.create_random_visible_indicies()       
+        self.visible_indicies = visible_indicies if visible_indicies != None else self.create_random_visible_indicies(self.visible_patches)       
 
         # reconstruct A from visible_indicies
-        self.real_C = self.reconstruct_image(input['A'], self.visible_indicies)
+        self.real_C = self.reconstruct_visible_patches(input['A'], self.visible_indicies)
+        
+        # dont forget to move the patches off to GPU
+        self.visible_indicies = self.visible_indicies.to(self.device)
         
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
