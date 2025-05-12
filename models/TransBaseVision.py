@@ -199,7 +199,7 @@ class ViTARwMWrapper(nn.Module):
             ff_dim         = ff_dim 
         )
         self.wrapped_decoder = BasicViTDecoder(
-            output_channels = output_channels,
+            output_channels = output_channels * 4,
             image_size      = image_size,
             patch_size      = patch_size,
             latent_size     = latent_size,
@@ -212,9 +212,22 @@ class ViTARwMWrapper(nn.Module):
             encoder = self.wrapped_encoder,
             decoder = self.wrapped_decoder
         )
-    
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(output_channels * 4, output_channels * 2, kernel_size = 3, padding = 'same'),
+            nn.BatchNorm2d(output_channels * 2),
+            nn.ReLU(),
+            nn.Conv2d(output_channels * 2, output_channels * 1, kernel_size = 3, padding = 'same'),
+            nn.BatchNorm2d(output_channels * 1),
+            nn.Sigmoid()
+        )
+
+
     def forward(self, x : torch.Tensor, visible_indicies : torch.Tensor) -> torch.Tensor:
-        return self.wrapper(x, visible_indicies)
+        p = self.wrapper(x, visible_indicies)
+        p = self.conv(p)
+        return p
+
 
 if __name__ == "__main__":
     print("Basic Transfomer Blocks")
